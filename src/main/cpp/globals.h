@@ -107,6 +107,7 @@ struct ConfigurationOptions {
 
 // Wrap JVMTI functions in this in void functions.
 #define JVMTI_ERROR(error) JVMTI_ERROR_CLEANUP(error, /* nothing */)
+#define JVMTI_ERROR_0(error) JVMTI_ERROR_CLEANUP_0(error, /* nothing */)
 
 // Wrap JVMTI functions in this in void functions that require cleanup.
 #define JVMTI_ERROR_CLEANUP(error, cleanup)                                    \
@@ -116,6 +117,17 @@ struct ConfigurationOptions {
       logError("JVMTI error %d\n", err);                                       \
       cleanup;                                                                 \
       return;                                                                  \
+    }                                                                          \
+  }
+
+// Wrap JVMTI functions in this in void functions that require cleanup.
+#define JVMTI_ERROR_CLEANUP_0(error, cleanup)                                  \
+  {                                                                            \
+    int err;                                                                   \
+    if ((err = (error)) != JVMTI_ERROR_NONE) {                                 \
+      logError("JVMTI error %d\n", err);                                       \
+      cleanup;                                                                 \
+      return 0;                                                                \
     }                                                                          \
   }
 

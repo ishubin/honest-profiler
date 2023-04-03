@@ -298,6 +298,52 @@ static void parseArguments(char *options, ConfigurationOptions &configuration) {
     }
 }
 
+AGENTEXPORT jint JNICALL Agent_OnAttach(JavaVM *jvm, char *options, void *reserved) {
+    IMPLICITLY_USE(reserved);
+    int err;
+    jvmtiEnv *jvmti;
+    parseArguments(options, configuration);
+
+    if ((err = (jvm->GetEnv(reinterpret_cast<void **>(&jvmti), JVMTI_VERSION))) !=
+            JNI_OK) {
+        logError("ERROR: JVMTI initialisation error %d\n", err);
+        return 1;
+    }
+
+    if (!PrepareJvmti(jvmti)) {
+        logError("ERROR: Failed to initialize JVMTI. Continuing...\n");
+        return 0;
+    }
+
+    if (!RegisterJvmti(jvmti)) {
+        logError("ERROR: Failed to enable JVMTI events. Continuing...\n");
+        // We fail hard here because we may have failed in the middle of
+        // registering callbacks, which will leave the system in an
+        // inconsistent state.
+        return 1;
+    }
+
+    Asgct::SetAsgct(Accessors::GetJvmFunction<ASGCTType>("AsyncGetCallTrace"));
+
+    prof = new Profiler(jvm, jvmti, configuration, threadMap);
+    controller = new Controller(jvm, jvmti, prof, configuration);
+
+    jint class_count;
+    JvmtiScopedPtr<jclass> classes(jvmti);
+    JVMTI_ERROR_0((jvmti->GetLoadedClasses(&class_count, classes.GetRef())));
+    jclass *classList = classes.Get();
+    for (int i = 0; i < class_count; ++i) {
+        jclass klass = classList[i];
+        CreateJMethodIDsForClass(jvmti, klass);
+    }
+
+    if (!configuration.host.empty() && !configuration.port.empty()) {
+        controller->start();
+    }
+
+    return 0;
+}
+
 AGENTEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) {
     IMPLICITLY_USE(reserved);
     int err;

@@ -26,12 +26,13 @@ import com.insightfullogic.honest_profiler.core.parser.Method;
 import com.insightfullogic.honest_profiler.core.profiles.FlameGraph;
 import com.insightfullogic.honest_profiler.core.profiles.FlameTrace;
 import com.insightfullogic.honest_profiler.core.sources.LogSource;
-import com.insightfullogic.honest_profiler.ports.javafx.view.Rendering;
 import com.insightfullogic.honest_profiler.ports.sources.FileLogSource;
 
 import java.io.*;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import com.insightfullogic.honest_profiler.core.collector.Frame;
 
 /**
  * Dump's out a flame graph which can be processed with
@@ -64,6 +65,16 @@ public class FlameGraphDumperApplication
         }
     }
 
+    public static String renderMethod(Frame method)
+    {
+        if (method == null)
+        {
+            return "unknown";
+        }
+
+        return method.getClassName() + "." + method.getMethodName();
+    }
+
     private static void writeTrace(Writer out, FlameTrace flameTrace) throws IOException
     {
         List<Method> methods = flameTrace.getMethods();
@@ -73,7 +84,7 @@ public class FlameGraphDumperApplication
 
         out.write(
             methods.stream()
-                .map(Rendering::renderMethod)
+                .map(FlameGraphDumperApplication::renderMethod)
                 .collect(Collectors.joining(";")));
 
         out.write(" ");
